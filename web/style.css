@@ -194,6 +194,7 @@ h1 {
     margin-left: auto;
     margin-right: auto;
     position: relative;
+    color: rgb(216, 222, 225);
     z-index: 2;
 }
 
@@ -213,7 +214,7 @@ h1 {
 
 .innerContainer {
     background-color: transparent;
-    max-width: 100vmin;
+    width: 100vmin;
     margin-left: auto;
     margin-right: auto;
     z-index: 2;
@@ -221,15 +222,98 @@ h1 {
 }
 
 .input {
-    color: white;
-    border: 2px solid #8707ff;
+    background-color: rgb(216, 222, 225);
+    border: 2px solid #0b5ab4;
     border-radius: 10px;
-    padding: 10px 25px; 
-    background: transparent;
-    max-width: 100vmin;
+    padding: 10px 25px;
+    width: 100%;
+    height: 70vmin;
     z-index: 2;
+    resize: none;
+    font-family: monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    white-space: pre;
+    overflow-wrap: normal;
+    overflow-x: auto;
+    tab-size: 4;
 }
 
-.input:active {
-    box-shadow: 2px 2px 15px #8707ff inset;
+.input:focus {
+    outline: none;
+    box-shadow: 0px 0px 8px #0b5ab4 inset;
+}
+
+.input::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+.input::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+}
+
+.input::-webkit-scrollbar-thumb {
+    background: #0b5ab4;
+    border-radius: 10px;
+}
+
+.input::-webkit-scrollbar-thumb:hover {
+    background: #0b5ab4;
+}
+
+.input {
+    vertical-align: top;
+    text-align: left;
+}
+
+
+/* From Uiverse.io by yaasiinaxmed */
+button {
+    --color: #0077ff;
+    font-family: inherit;
+    display: inline-block;
+    width: 6em;
+    height: 2.6em;
+    line-height: 2.5em;
+    overflow: hidden;
+    cursor: pointer;
+    margin: 20px;
+    font-size: 17px;
+    z-index: 1;
+    color: var(--color);
+    border: 2px solid var(--color);
+    border-radius: 6px;
+    position: relative;
+}
+
+button::before {
+    position: absolute;
+    content: "";
+    background: var(--color);
+    width: 150px;
+    height: 200px;
+    z-index: -1;
+    border-radius: 50%;
+}
+
+button:hover {
+    color: white;
+}
+
+button:before {
+    top: 100%;
+    left: 100%;
+    transition: 0.3s all;
+}
+
+button:hover::before {
+    top: -30px;
+    left: -30px;
+}
+
+.BtnsContainer {
+    margin-left: 30vmin;
+
 }

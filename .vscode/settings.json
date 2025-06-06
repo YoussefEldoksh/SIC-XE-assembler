@@ -1,0 +1,18 @@
+{
+    "files.associations": {
+        "istream": "c",
+        "limits": "c",
+        "sstream": "c",
+        "*.tcc": "c",
+        "exception": "c",
+        "buffer": "c",
+        "io_context": "c",
+        "memory_resource": "c",
+        "format": "c",
+        "iosfwd": "c",
+        "new": "c",
+        "ostream": "c",
+        "stop_token": "c",
+        "streambuf": "c"
+    }
+}
