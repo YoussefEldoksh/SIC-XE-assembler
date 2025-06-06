@@ -181,14 +181,83 @@ void pass_one(HashNode *optab[], HashNode *regs[], HashNode *symtab[])
         {
             HashNode *operation = get(optab, mnemonic);
             L = operation->value2;
-            if (strstr(operand, "#") == NULL)
-            {
-                insert(symtab, operand, LCCTR, 0);
-            }
+
             if (operation != NULL)
             {
                 LCCTR += L;
             }
+            else if (operation == NULL)
+            {
+                // First check if it's a directive
+                token = strtok(NULL, " \n");
+                if (token != NULL)
+                {
+                    if (strcmp(token, "BYTE") == 0)
+                    {
+                        token = strtok(NULL, " \n");
+                        L = strlen(token);
+                        insert(symtab, mnemonic, LCCTR, L);
+                        LCCTR += L;
+                    }
+                    else if (strcmp(token, "WORD") == 0)
+                    {
+                        L = 3;
+                        insert(symtab, mnemonic, LCCTR, L);
+                        LCCTR += L;
+                    }
+                    else if (strcmp(token, "RESB") == 0)
+                    {
+                        token = strtok(NULL, " \n");
+                        L = atoi(token);
+                        insert(symtab, mnemonic, LCCTR, L);
+                        LCCTR += L;
+                    }
+                    else if (strcmp(token, "RESW") == 0)
+                    {
+                        token = strtok(NULL, " \n");
+                        L = 3 * atoi(token);
+                        insert(symtab, mnemonic, LCCTR, L);
+                        LCCTR += L;
+                    }
+                    else if (strcmp(token, "EQU") == 0)
+                    {
+                        token = strtok(NULL, " \n");
+                        int value = atoi(token);
+                        insert(symtab, mnemonic, value, 0);
+                    }
+                    else if (strcmp(token, "ORG") == 0)
+                    {
+                        token = strtok(NULL, " \n");
+                        LCCTR = atoi(token);
+                    }
+                    else
+                    {
+                        // Check if it's an operation with format 4 (+)
+                        if (strstr(mnemonic, "+") != NULL)
+                        {
+                            operation = get(optab, mnemonic + 1); // Skip the + character
+                            if (operation != NULL)
+                            {
+                                L = 4;
+                                insert(symtab, mnemonic, LCCTR, L);
+                                LCCTR += L;
+                            }
+                        }
+                        // Check if it's a regular operation
+                        else
+                        {
+                            operation = get(optab, mnemonic);
+                            if (operation != NULL)
+                            {
+                                L = 3;
+                                insert(symtab, mnemonic, LCCTR, L);
+                                LCCTR += L;
+                            }
+                        }
+                    }
+                }
+            }
+
             fprintf(copyFile, "%s", buffer2);
             continue;
         }
