@@ -64,17 +64,94 @@ void send_404(SOCKET client_socket)
     send(client_socket, not_found, strlen(not_found), 0);
 }
 
+void handle_post_request(SOCKET client_socket, const char *request, const char *body)
+{
+    printf("Processing POST request\n");
+    printf("Request body:\n%s\n", body);
+
+    // Get the server directory path and navigate to assembler directory
+    char server_dir[MAX_PATH];
+    char assembler_dir[MAX_PATH];
+    GetModuleFileName(NULL, server_dir, MAX_PATH);
+
+    // Get the directory part of the path
+    char *last_slash = strrchr(server_dir, '\\');
+    if (last_slash)
+    {
+        *last_slash = '\0'; // Remove the executable name
+        last_slash = strrchr(server_dir, '\\');
+        if (last_slash)
+        {
+            *last_slash = '\0'; // Remove the 'server' directory
+            // Now server_dir points to the SIC_XE assembler directory
+            sprintf(assembler_dir, "%s\\assembler\\input_code.txt", server_dir);
+        }
+    }
+
+    printf("Saving code to: %s\n", assembler_dir);
+
+    FILE *file = fopen(assembler_dir, "w");
+    if (file)
+    {
+        fprintf(file, "%s", body);
+        fclose(file);
+
+        // Send success response
+        const char *response = "Code saved successfully";
+        send_http_response(client_socket, "text/plain", response, strlen(response));
+        printf("Code saved successfully\n");
+    }
+    else
+    {
+        printf("Failed to open file for writing. Error: %d\n", GetLastError());
+        // Send error response
+        const char *error = "Failed to save code";
+        char header[1024];
+        int header_length = sprintf(header,
+                                    "HTTP/1.1 500 Internal Server Error\r\n"
+                                    "Content-Type: text/plain\r\n"
+                                    "Content-Length: %d\r\n"
+                                    "Connection: close\r\n"
+                                    "\r\n",
+                                    strlen(error));
+        send(client_socket, header, header_length, 0);
+        send(client_socket, error, strlen(error), 0);
+    }
+}
+
 void handle_request(SOCKET client_socket, const char *request)
 {
-    // Get the web root path
-    const char *web_root = get_web_root();
-
-    // Simple request parsing - just get the path
-    char path[MAX_PATH];
-    strcpy(path, web_root); // Start with web root
-
     printf("\n=== New Request ===\n");
-    printf("Raw request: %s\n", request); // Print the entire request
+    printf("Raw request: %s\n", request);
+
+    // Check if it's a POST request to /submit
+    if (strncmp(request, "POST /submit", 11) == 0)
+    {
+        // Find Content-Length header
+        const char *content_length_str = strstr(request, "Content-Length: ");
+        if (content_length_str)
+        {
+            content_length_str += 16; // Skip "Content-Length: "
+            int content_length = atoi(content_length_str);
+
+            // Find the body (after the headers)
+            const char *body = strstr(request, "\r\n\r\n");
+            if (body)
+            {
+                body += 4; // Skip the \r\n\r\n
+                handle_post_request(client_socket, request, body);
+                return;
+            }
+        }
+        printf("Invalid POST request format\n");
+        send_404(client_socket);
+        return;
+    }
+
+    // Handle GET requests as before
+    const char *web_root = get_web_root();
+    char path[MAX_PATH];
+    strcpy(path, web_root);
 
     if (strncmp(request, "GET ", 4) == 0)
     {
