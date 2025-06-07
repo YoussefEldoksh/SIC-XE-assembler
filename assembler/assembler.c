@@ -153,119 +153,175 @@ void pass_one(HashNode *optab[], HashNode *regs[], HashNode *symtab[])
     while (fgets(buffer, sizeof(buffer), srcCode))
     {
         strcpy(buffer2, buffer);
+        printf("Processing: %s", buffer2); // Print each line as it's processed
+
         char *token = strtok(buffer, " \n");
-        if (token != NULL && strcmp(token, "PROG") == 0)
+        if (token != NULL)
         {
-            insert(symtab, "PROG", LCCTR, 0);
-            token = strtok(NULL, " \n");
-            if (token != NULL && strcmp(token, "START") == 0)
-            {
-                printf("Found START directive\n");
-                token = strtok(NULL, " \n");
-                L = atoi(token);
-                LCCTR += L;
-                fprintf(copyFile, "%s", buffer2);
-                continue;
-            }
-        }
-        if (token != NULL && strcmp(token, "END") == 0)
-        {
-            printf("Found END directive\n");
-            fprintf(copyFile, "%s", buffer2);
-            continue;
-        }
+            // Store the symbol and its current location
+            insert(symtab, token, LCCTR, 0);
+            printf("Symbol: %s\n", token);
+            printf("LCCTR: %d\n", LCCTR);
+            printf("Format: %d\n", get(symtab, token)->value3);
+            printf("--------------------------------\n");
 
-        char *mnemonic = token;
-        char *operand = strtok(NULL, " \n");
-        if (operand != NULL)
-        {
-            HashNode *operation = get(optab, mnemonic);
-            L = operation->value2;
-
-            if (operation != NULL)
+            char *mnemonic = token;
+            char *operand = strtok(NULL, " \n");
+            if (operand != NULL)
             {
-                LCCTR += L;
-            }
-            else if (operation == NULL)
-            {
-                // First check if it's a directive
-                token = strtok(NULL, " \n");
-                if (token != NULL)
+                if (strcmp(mnemonic, "START") == 0)
                 {
-                    if (strcmp(token, "BYTE") == 0)
+                    printf("Found START directive\n");
+                    token = strtok(NULL, " \n");
+                    if (token != NULL)
                     {
-                        token = strtok(NULL, " \n");
-                        L = strlen(token);
-                        insert(symtab, mnemonic, LCCTR, L);
-                        LCCTR += L;
+                        LCCTR = atoi(token); // Set starting address
+                        printf("Starting address set to: %d\n", LCCTR);
                     }
-                    else if (strcmp(token, "WORD") == 0)
+                }
+                else if (strcmp(mnemonic, "END") == 0)
+                {
+                    printf("Found END directive\n");
+                }
+                else
+                {
+                    // Check if it's an operation
+                    HashNode *operation = get(optab, mnemonic);
+                    if (operation != NULL)
                     {
-                        L = 3;
-                        insert(symtab, mnemonic, LCCTR, L);
-                        LCCTR += L;
-                    }
-                    else if (strcmp(token, "RESB") == 0)
-                    {
-                        token = strtok(NULL, " \n");
-                        L = atoi(token);
-                        insert(symtab, mnemonic, LCCTR, L);
-                        LCCTR += L;
-                    }
-                    else if (strcmp(token, "RESW") == 0)
-                    {
-                        token = strtok(NULL, " \n");
-                        L = 3 * atoi(token);
-                        insert(symtab, mnemonic, LCCTR, L);
-                        LCCTR += L;
-                    }
-                    else if (strcmp(token, "EQU") == 0)
-                    {
-                        token = strtok(NULL, " \n");
-                        int value = atoi(token);
-                        insert(symtab, mnemonic, value, 0);
-                    }
-                    else if (strcmp(token, "ORG") == 0)
-                    {
-                        token = strtok(NULL, " \n");
-                        LCCTR = atoi(token);
+                        // Update LCCTR based on instruction format
+                        if (strstr(mnemonic, "+") != NULL)
+                        {
+                            // Format 4 instruction
+                            LCCTR += 4;
+                            printf("Format 4 instruction, LCCTR += 4\n");
+                        }
+                        else
+                        {
+                            // Format 3 instruction
+                            LCCTR += 3;
+                            printf("Format 3 instruction, LCCTR += 3\n");
+                        }
                     }
                     else
                     {
-                        // Check if it's an operation with format 4 (+)
-                        if (strstr(mnemonic, "+") != NULL)
+                        // Check for directives
+                        if (strcmp(operand, "BYTE") == 0)
                         {
-                            operation = get(optab, mnemonic + 1); // Skip the + character
-                            if (operation != NULL)
+                            token = strtok(NULL, " \n");
+                            if (token != NULL)
                             {
-                                L = 4;
-                                insert(symtab, mnemonic, LCCTR, L);
+                                L = strlen(token) - 2; // Subtract 2 for quotes
                                 LCCTR += L;
+                                printf("BYTE directive, LCCTR += %d\n", L);
                             }
                         }
-                        // Check if it's a regular operation
-                        else
+                        else if (strcmp(operand, "WORD") == 0)
                         {
-                            operation = get(optab, mnemonic);
-                            if (operation != NULL)
+                            LCCTR += 3;
+                            printf("WORD directive, LCCTR += 3\n");
+                        }
+                        else if (strcmp(operand, "RESB") == 0)
+                        {
+                            token = strtok(NULL, " \n");
+                            if (token != NULL)
                             {
-                                L = 3;
-                                insert(symtab, mnemonic, LCCTR, L);
+                                L = atoi(token);
                                 LCCTR += L;
+                                printf("RESB directive, LCCTR += %d\n", L);
+                            }
+                        }
+                        else if (strcmp(operand, "RESW") == 0)
+                        {
+                            token = strtok(NULL, " \n");
+                            if (token != NULL)
+                            {
+                                L = 3 * atoi(token);
+                                LCCTR += L;
+                                printf("RESW directive, LCCTR += %d\n", L);
                             }
                         }
                     }
                 }
             }
-
             fprintf(copyFile, "%s", buffer2);
             continue;
         }
+        fflush(stdout);
         fprintf(copyFile, "%s", buffer2);
     }
     fclose(srcCode);
     fclose(copyFile);
 }
+
+void pass_two(HashNode *optab[], HashNode *regs[], HashNode *symtab[])
+{
+    char buffer[50];
+    char buffer2[50];
+    copyFile = fopen("copy_file.txt", "r");
+    objFile = fopen("object_code.txt", "w");
+    if (copyFile == NULL)
+    {
+        printf("==== NO COPY FILE FOUND ====\n");
+        exit(1);
+    }
+
+    // Get program name and starting address from first line
+    fgets(buffer, sizeof(buffer), copyFile);
+    strcpy(buffer2, buffer);
+    char *progName = strtok(buffer, " \n");
+    char *startDirective = strtok(NULL, " \n");
+    int startAddr = 0;
+    if (startDirective != NULL && strcmp(startDirective, "START") == 0)
+    {
+        char *addrStr = strtok(NULL, " \n");
+        if (addrStr != NULL)
+        {
+            startAddr = atoi(addrStr);
+        }
+    }
+
+    // Get program length from symbol table
+    HashNode *progSymbol = get(symtab, progName);
+    int progLength = 0;
+    if (progSymbol != NULL)
+    {
+        // Find the last symbol's address + length to get program length
+        for (int i = 0; i < TABLE_SIZE; i++)
+        {
+            HashNode *node = symtab[i];
+            while (node != NULL)
+            {
+                if (node->value2 > 0) // If it's a symbol with length
+                {
+                    int endAddr = node->value1 + node->value2;
+                    if (endAddr > progLength)
+                    {
+                        progLength = endAddr;
+                    }
+                }
+                node = node->next;
+            }
+        }
+        progLength -= startAddr; // Subtract starting address to get length
+    }
+
+    // Write header record
+    fprintf(objFile, "H%-6s%06X%06X\n", progName, startAddr, progLength);
+    printf("Header Record: H%-6s%06X%06X\n", progName, startAddr, progLength);
+
+    // Reset file pointer to beginning for processing instructions
+    rewind(copyFile);
+
+    while (fgets(buffer, sizeof(buffer), copyFile))
+    {
+        strcpy(buffer2, buffer);
+        char *token = strtok(buffer, " \n");
+    }
+    fclose(copyFile);
+    fclose(objFile);
+}
+
 int main()
 {
     HashNode *OPTAB[TABLE_SIZE] = {NULL};
@@ -312,7 +368,7 @@ int main()
         int reg_num;
         if (sscanf(buffer, "%s %d", mnemonic, &reg_num) == 2)
         {
-            insert(REGS, mnemonic, reg_num, 2); // Using format 2 for registers
+            insert(REGS, mnemonic, reg_num, 0);
         }
         else
         {
@@ -331,6 +387,11 @@ int main()
     // Write tables to file before freeing them
     write_tables_to_file(OPTAB, REGS, "assembler_tables.txt");
     pass_one(OPTAB, REGS, SYMTAB);
+
+    // Call pass two to generate object code
+    printf("\nGenerating object code...\n");
+    pass_two(OPTAB, REGS, SYMTAB);
+    printf("Object code generation complete. Check object_code.txt\n");
 
     // Free tables after writing
     free_table(OPTAB);

@@ -66,12 +66,12 @@ LPS        0xFFFFFFD0 3        3
 REGISTER TABLE (REGS):
 Register   Number   Length   Format  
 ----------------------------------------
-A          0        2        2       
-B          3        2        2       
-F          6        2        2       
-L          2        2        2       
-S          4        2        2       
-T          5        2        2       
-X          1        2        2       
-PC         8        2        2       
-SW         9        2        2       
+A          0        4        0       
+B          3        4        0       
+F          6        4        0       
+L          2        4        0       
+S          4        4        0       
+T          5        4        0       
+X          1        4        0       
+PC         8        4        0       
+SW         9        4        0       
