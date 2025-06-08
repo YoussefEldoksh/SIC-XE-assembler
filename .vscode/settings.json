@@ -13,6 +13,8 @@
         "new": "c",
         "ostream": "c",
         "stop_token": "c",
-        "streambuf": "c"
+        "streambuf": "c",
+        "stdio.h": "c",
+        "string.h": "c"
     }
 }

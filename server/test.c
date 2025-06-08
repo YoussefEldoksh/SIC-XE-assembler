@@ -117,6 +117,14 @@ void handle_post_request(SOCKET client_socket, const char *request, const char *
         send(client_socket, header, header_length, 0);
         send(client_socket, error, strlen(error), 0);
     }
+    // Change directory to assembler directory first
+    char cmd[MAX_PATH];
+    sprintf(cmd, "cd \"%s\\assembler\" && .\\assembler.exe", server_dir);
+    int result = system(cmd);
+    if (result != 0)
+    {
+        printf("Failed to run assembler. Error code: %d\n", result);
+    }
 }
 
 void handle_request(SOCKET client_socket, const char *request)

@@ -258,6 +258,7 @@ void pass_two(HashNode *optab[], HashNode *regs[], HashNode *symtab[])
 {
     char buffer[50];
     char buffer2[50];
+    char *nixpbe = "000000"; // 6 zeros initial value
     copyFile = fopen("copy_file.txt", "r");
     objFile = fopen("object_code.txt", "w");
     if (copyFile == NULL)
@@ -317,9 +318,107 @@ void pass_two(HashNode *optab[], HashNode *regs[], HashNode *symtab[])
     {
         strcpy(buffer2, buffer);
         char *token = strtok(buffer, " \n");
+        if (token != NULL)
+        {
+            HashNode *operation = get(optab, token);
+            char *opcode = operation->value1;
+            char *length = operation->value2;
+            char *format = operation->value3;
+            char *nixpbe = "000000";
+            char *objectCode = malloc(length + 1);
+            strcpy(objectCode, opcode);
+            if (format == 1)
+            {
+                token = strtok(NULL, " \n");
+                if (token != NULL)
+                {
+                    HashNode *reg_node = get(regs, token);
+                    if (reg_node != NULL)
+                    {
+                        strcat(objectCode, reg_node->value1);
+                        fprintf(objFile, "T%06X%02X%s\n", LCCTR, length, objectCode);
+                    }
+                    else
+                    {
+                        printf("Invalid register: %s", token);
+                    }
+                }
+            }
+            else if (format == 2)
+            {
+                token = strtok(NULL, " \n");
+                if (token != NULL)
+                {
+                    HashNode *reg_node = get(regs, token);
+                    if (reg_node != NULL)
+                    {
+                        strcat(objectCode, reg_node->value1);
+                        fprintf(objFile, "T%06X%02X%s\n", LCCTR, length, objectCode);
+                    }
+                    else
+                    {
+                        printf("Invalid register: %s", token);
+                    }
+                }
+            }
+            else if (format == 3)
+            {
+                token = strtok(NULL, " \n");
+                if (token != NULL)
+                {
+                    if (token[0] == '#')
+                    {
+                        token++;
+                        nixpbe = "010000";
+                    }
+                    else if (token[0] == '@')
+                    {
+                        token++;
+                        nixpbe = "100000";
+                    }
+                    else if (token[strlen(token) - 2] == 'X')
+                    {
+                        token++;
+                        nixpbe = "111010";
+                    }
+                    HashNode *reg_node = get(regs, token);
+                    if (reg_node != NULL)
+                    {
+                    }
+                }
+                else if (format == 4)
+                {
+                    token = strtok(NULL, " \n");
+                    if (token != NULL)
+                    {
+                        if (token[0] == '#')
+                        {
+                            token++;
+                            nixpbe = "010001";
+                        }
+                        else if (token[0] == '@')
+                        {
+                            token++;
+                            nixpbe = "100001";
+                        }
+                        else if (token[strlen(token) - 2] == 'X')
+                        {
+                            token++;
+                            nixpbe = "111011";
+                        }
+                        HashNode *reg_node = get(regs, token);
+                        if (reg_node != NULL)
+                        {
+                        }
+                    }
+                    strcat(objectCode, nixpbe);
+                    strcat(objectCode, nixpbe);
+                }
+            }
+            fclose(copyFile);
+            fclose(objFile);
+        }
     }
-    fclose(copyFile);
-    fclose(objFile);
 }
 
 int main()
