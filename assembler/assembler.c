@@ -5,10 +5,10 @@
 
 typedef struct HashNode
 {
-    char *key;   // Mnemonic
-    char value1; // Binary code string
-    int value2;  // Instruction length in bytes
-    int value3;  // Format type (1, 2, 3, or 4)
+    char *key;    // Mnemonic
+    char *value1; // HEX code string
+    int value2;   // Instruction length in bytes
+    int value3;   // Format type (1, 2, 3, or 4)
     struct HashNode *next;
 } HashNode;
 
@@ -29,7 +29,7 @@ unsigned int hash(char *key)
     return hash % TABLE_SIZE;
 }
 
-void insert(HashNode *table[], const char *key, int value, int format)
+void insert(HashNode *table[], const char *key, char *value, int format)
 {
     unsigned int index = hash(key);
     HashNode *node = table[index];
@@ -107,7 +107,7 @@ void write_tables_to_file(HashNode *optab[], HashNode *regs[], const char *filen
         HashNode *node = optab[i];
         while (node != NULL)
         {
-            fprintf(outFile, "%-10s 0x%-6X %-8d %-8d\n",
+            fprintf(outFile, "%-10s %-8s %-8d %-8d\n",
                     node->key,
                     node->value1,
                     node->value2,
@@ -126,7 +126,7 @@ void write_tables_to_file(HashNode *optab[], HashNode *regs[], const char *filen
         HashNode *node = regs[i];
         while (node != NULL)
         {
-            fprintf(outFile, "%-10s %-8d %-8d %-8d\n",
+            fprintf(outFile, "%-10s %-8s %-8d %-8d\n",
                     node->key,
                     node->value1,
                     node->value2,
@@ -159,7 +159,9 @@ void pass_one(HashNode *optab[], HashNode *regs[], HashNode *symtab[])
         if (token != NULL)
         {
             // Store the symbol and its current location
-            insert(symtab, token, LCCTR, 0);
+            char LCCTRstr[20]; // Allocate proper buffer
+            sprintf(LCCTRstr, "%d", LCCTR);
+            insert(symtab, token, LCCTRstr, 0);
             printf("Symbol: %s\n", token);
             printf("LCCTR: %d\n", LCCTR);
             printf("Format: %d\n", get(symtab, token)->value3);
@@ -256,8 +258,8 @@ void pass_one(HashNode *optab[], HashNode *regs[], HashNode *symtab[])
 
 void pass_two(HashNode *optab[], HashNode *regs[], HashNode *symtab[])
 {
-    char buffer[50];
-    char buffer2[50];
+    char buffer[256];        // Allocate proper buffer
+    char buffer2[256];       // Allocate proper buffer
     char *nixpbe = "000000"; // 6 zeros initial value
     copyFile = fopen("copy_file.txt", "r");
     objFile = fopen("object_code.txt", "w");
@@ -268,7 +270,13 @@ void pass_two(HashNode *optab[], HashNode *regs[], HashNode *symtab[])
     }
 
     // Get program name and starting address from first line
-    fgets(buffer, sizeof(buffer), copyFile);
+    if (fgets(buffer, sizeof(buffer), copyFile) == NULL)
+    {
+        printf("Error reading first line\n");
+        fclose(copyFile);
+        fclose(objFile);
+        return;
+    }
     strcpy(buffer2, buffer);
     char *progName = strtok(buffer, " \n");
     char *startDirective = strtok(NULL, " \n");
@@ -279,6 +287,7 @@ void pass_two(HashNode *optab[], HashNode *regs[], HashNode *symtab[])
         if (addrStr != NULL)
         {
             startAddr = atoi(addrStr);
+            LCCTR = startAddr;
         }
     }
 
@@ -295,7 +304,8 @@ void pass_two(HashNode *optab[], HashNode *regs[], HashNode *symtab[])
             {
                 if (node->value2 > 0) // If it's a symbol with length
                 {
-                    int endAddr = node->value1 + node->value2;
+                    char *num = node->value1;
+                    int endAddr = atoi(num) + node->value2;
                     if (endAddr > progLength)
                     {
                         progLength = endAddr;
@@ -308,8 +318,8 @@ void pass_two(HashNode *optab[], HashNode *regs[], HashNode *symtab[])
     }
 
     // Write header record
-    fprintf(objFile, "H%-6s%06X%06X\n", progName, startAddr, progLength);
-    printf("Header Record: H%-6s%06X%06X\n", progName, startAddr, progLength);
+    fprintf(objFile, "H^%-6s^%06X^%06X\n", progName, startAddr, progLength);
+    printf("Header Record: H%-6s^%06X^%06X\n", progName, startAddr, progLength);
 
     // Reset file pointer to beginning for processing instructions
     rewind(copyFile);
@@ -321,69 +331,60 @@ void pass_two(HashNode *optab[], HashNode *regs[], HashNode *symtab[])
         if (token != NULL)
         {
             HashNode *operation = get(optab, token);
-            char *opcode = operation->value1;
-            char *length = operation->value2;
-            char *format = operation->value3;
-            char *nixpbe = "000000";
-            char *objectCode = malloc(length + 1);
-            strcpy(objectCode, opcode);
-            if (format == 1)
+            if (operation != NULL)
             {
-                token = strtok(NULL, " \n");
-                if (token != NULL)
+                char *opcode = operation->value1;
+                int format = operation->value3; // Format is in value3
+                int length = operation->value2; // Length is in value2
+                char *nixpbe = "000000";
+                char *txt_record = malloc(32 + 1);
+                strcpy(txt_record, "");
+
+                if (format == 1)
                 {
-                    HashNode *reg_node = get(regs, token);
-                    if (reg_node != NULL)
+                    strcat(txt_record, opcode);
+                    fprintf(objFile, "T%06X%02X%s\n", LCCTR, length, txt_record);
+                }
+                else if (format == 2)
+                {
+                    token = strtok(NULL, " \n");
+                    if (token != NULL)
                     {
-                        strcat(objectCode, reg_node->value1);
-                        fprintf(objFile, "T%06X%02X%s\n", LCCTR, length, objectCode);
-                    }
-                    else
-                    {
-                        printf("Invalid register: %s", token);
+                        HashNode *reg_node = get(regs, token);
+                        if (reg_node != NULL)
+                        {
+                            strcat(txt_record, opcode);
+                            strcat(txt_record, reg_node->value1);
+                            fprintf(objFile, "T%06X%02X%s\n", LCCTR, length, txt_record);
+                        }
+                        else
+                        {
+                            printf("Invalid register: %s\n", token);
+                        }
                     }
                 }
-            }
-            else if (format == 2)
-            {
-                token = strtok(NULL, " \n");
-                if (token != NULL)
+                else if (format == 3)
                 {
-                    HashNode *reg_node = get(regs, token);
-                    if (reg_node != NULL)
+                    token = strtok(NULL, " \n");
+                    if (token != NULL)
                     {
-                        strcat(objectCode, reg_node->value1);
-                        fprintf(objFile, "T%06X%02X%s\n", LCCTR, length, objectCode);
-                    }
-                    else
-                    {
-                        printf("Invalid register: %s", token);
-                    }
-                }
-            }
-            else if (format == 3)
-            {
-                token = strtok(NULL, " \n");
-                if (token != NULL)
-                {
-                    if (token[0] == '#')
-                    {
-                        token++;
-                        nixpbe = "010000";
-                    }
-                    else if (token[0] == '@')
-                    {
-                        token++;
-                        nixpbe = "100000";
-                    }
-                    else if (token[strlen(token) - 2] == 'X')
-                    {
-                        token++;
-                        nixpbe = "111010";
-                    }
-                    HashNode *reg_node = get(regs, token);
-                    if (reg_node != NULL)
-                    {
+                        if (token[0] == '#')
+                        {
+                            token++;
+                            nixpbe = "010000";
+                        }
+                        else if (token[0] == '@')
+                        {
+                            token++;
+                            nixpbe = "100000";
+                        }
+                        else if (token[strlen(token) - 1] == 'X')
+                        {
+                            nixpbe = "111010";
+                        }
+                        strcat(txt_record, opcode);
+                        strcat(txt_record, nixpbe);
+                        fprintf(objFile, "T%06X%02X%s\n", LCCTR, length, txt_record);
                     }
                 }
                 else if (format == 4)
@@ -401,24 +402,21 @@ void pass_two(HashNode *optab[], HashNode *regs[], HashNode *symtab[])
                             token++;
                             nixpbe = "100001";
                         }
-                        else if (token[strlen(token) - 2] == 'X')
+                        else if (token[strlen(token) - 1] == 'X')
                         {
-                            token++;
                             nixpbe = "111011";
                         }
-                        HashNode *reg_node = get(regs, token);
-                        if (reg_node != NULL)
-                        {
-                        }
+                        strcat(txt_record, opcode);
+                        strcat(txt_record, nixpbe);
+                        fprintf(objFile, "T%06X%02X%s\n", LCCTR, length, txt_record);
                     }
-                    strcat(objectCode, nixpbe);
-                    strcat(objectCode, nixpbe);
                 }
+                free(txt_record);
             }
-            fclose(copyFile);
-            fclose(objFile);
         }
     }
+    fclose(copyFile);
+    fclose(objFile);
 }
 
 int main()
@@ -429,17 +427,17 @@ int main()
     char buffer[50];
     char mnemonic[10];
     int format;
-    int opcode;
+    char opcode[10]; // Changed back to 10 to accommodate hex opcodes
 
     instructionsFile = fopen("instructions.txt", "r");
     if (instructionsFile == NULL)
     {
-        printf("FILE WASN'T FOUDN");
+        printf("FILE WASN'T FOUND");
         exit(1);
     }
     while (fgets(buffer, sizeof(buffer), instructionsFile))
     {
-        if (sscanf(buffer, "%s %d %x", mnemonic, &format, &opcode) == 3)
+        if (sscanf(buffer, "%s %d %s", mnemonic, &format, opcode) == 3)
         {
             insert(OPTAB, mnemonic, opcode, format);
         }
@@ -452,7 +450,7 @@ int main()
     HashNode *val = get(OPTAB, "ADD");
     if (val)
     {
-        printf("Opcode for ADD: %s   %X   %d   %d\n", val->key, val->value1, val->value2, val->value3);
+        printf("Opcode for ADD: %s   %s   %d   %d\n", val->key, val->value1, val->value2, val->value3);
     }
 
     registersFile = fopen("registers.txt", "r");
@@ -467,7 +465,9 @@ int main()
         int reg_num;
         if (sscanf(buffer, "%s %d", mnemonic, &reg_num) == 2)
         {
-            insert(REGS, mnemonic, reg_num, 0);
+            char register_num[10]; // Allocate proper buffer
+            sprintf(register_num, "%d", reg_num);
+            insert(REGS, mnemonic, register_num, 0);
         }
         else
         {
@@ -480,7 +480,7 @@ int main()
     HashNode *reg = get(REGS, "A");
     if (reg)
     {
-        printf("Register A: %s   %d   %d   %d\n", reg->key, reg->value1, reg->value2, reg->value3);
+        printf("Register A: %s   %s   %d   %d\n", reg->key, reg->value1, reg->value2, reg->value3);
     }
 
     // Write tables to file before freeing them
@@ -490,6 +490,7 @@ int main()
     // Call pass two to generate object code
     printf("\nGenerating object code...\n");
     pass_two(OPTAB, REGS, SYMTAB);
+
     printf("Object code generation complete. Check object_code.txt\n");
 
     // Free tables after writing
