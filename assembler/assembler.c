@@ -29,7 +29,7 @@ unsigned int hash(char *key)
     return hash % TABLE_SIZE;
 }
 
-void insert(HashNode *table[], const char *key, char *value, int format)
+void insert(HashNode *table[], const char *key  , char *value, int format)
 {
     unsigned int index = hash(key);
     HashNode *node = table[index];

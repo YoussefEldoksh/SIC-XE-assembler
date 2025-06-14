@@ -33,7 +33,7 @@ char *get_web_root()
     return full_path;
 }
 
-void send_http_response(SOCKET client_socket, const char *content_type, const char *body, int body_length)
+void send_http_response(SOCKET client_socket, const char *content_type, const char *body, int body_length) // create response
 {
     char header[1024];
     int header_length = sprintf(header,
@@ -48,7 +48,7 @@ void send_http_response(SOCKET client_socket, const char *content_type, const ch
     send(client_socket, body, body_length, 0);
 }
 
-void send_404(SOCKET client_socket)
+void send_404(SOCKET client_socket) // for error handling in the webpage
 {
     const char *not_found = "404 Not Found";
     char header[1024];
@@ -284,8 +284,8 @@ void launch(struct server *Server)
     int address_length = sizeof(Server->address);
     SOCKET new_socket;
 
-    printf("Server started on port %d\n", Server->port);
-    printf("Serving files from %s\n", get_web_root());
+    printf("Server started on port %d\n", Server->port); // 80 as it is running on localhost and it is an http server not https
+    printf("Serving files from %s\n", get_web_root());   // to get the web dir path to server frontend content
 
     while (1)
     {
@@ -303,7 +303,7 @@ void launch(struct server *Server)
         int bytes_received = recv(new_socket, buffer, sizeof(buffer) - 1, 0);
         if (bytes_received > 0)
         {
-            buffer[bytes_received] = '\0'; // Null terminate the received data
+            buffer[bytes_received] = '\0';
             printf("==== Request Received ====\n");
             printf("%s\n", buffer);
 
